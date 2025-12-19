@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -19,6 +20,10 @@
         z-index: 1;
       }
     </style>
+    <script>
+      // Global polyfill for 'process' to prevent White Screen on Vercel/Client-side
+      window.process = window.process || { env: {} };
+    </script>
   <script type="importmap">
 {
   "imports": {

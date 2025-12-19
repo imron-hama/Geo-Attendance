@@ -4,11 +4,12 @@ import { AttendanceRecord, AttendanceType } from "../types";
 
 export const generateWorkSummary = async (records: AttendanceRecord[]): Promise<string> => {
   try {
-    // Check if API_KEY exists to prevent crash
-    const apiKey = process.env.API_KEY;
+    // Defensive check for process.env to prevent ReferenceError crash
+    const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : null;
+    
     if (!apiKey) {
-      console.warn("Gemini API Key is missing. Please set API_KEY in environment variables.");
-      return "AI Summary is unavailable: Missing API Key configuration.";
+      console.warn("Gemini API Key is missing. Please check your Vercel Environment Variables.");
+      return "AI Summary is unavailable: API Key not found in environment.";
     }
 
     const ai = new GoogleGenAI({ apiKey });

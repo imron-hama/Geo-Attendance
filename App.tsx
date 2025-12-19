@@ -29,7 +29,15 @@ const App: React.FC = () => {
   const [adminViewAll, setAdminViewAll] = useState<boolean>(false);
   const [distance, setDistance] = useState<number | null>(null);
 
-  // Error catching for initialization
+  // Catch unexpected global errors for easier debugging on Vercel
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+        setAppError(`Runtime Error: ${event.message}`);
+    };
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
   useEffect(() => {
     const initApp = async () => {
         try {
@@ -39,7 +47,6 @@ const App: React.FC = () => {
             }
         } catch (e: any) {
             console.error("Initialization Error:", e);
-            // Don't set error for guest users
         }
     };
     initApp();
@@ -80,7 +87,7 @@ const App: React.FC = () => {
       setRecords(data);
     } catch (e: any) {
       console.error("Failed to load records", e);
-      setAppError("Failed to fetch history from database.");
+      setAppError("Failed to connect to database. Please check Supabase configuration.");
     } finally {
       setLoadingRecords(false);
     }
@@ -90,7 +97,7 @@ const App: React.FC = () => {
     setLoadingLocation(true);
     setLocationError(null);
     if (!navigator.geolocation) {
-      setLocationError("Geolocation is not supported.");
+      setLocationError("Geolocation is not supported by your browser.");
       setLoadingLocation(false);
       return;
     }
@@ -105,7 +112,7 @@ const App: React.FC = () => {
         setLoadingLocation(false);
       },
       (error) => {
-        setLocationError("Unable to retrieve location. Please enable GPS.");
+        setLocationError("Please enable GPS/Location permissions to use this app.");
         setLoadingLocation(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -168,8 +175,7 @@ const App: React.FC = () => {
         await api.logout();
         setCurrentUser(null);
     } catch (e) {
-        console.error("Logout error", e);
-        setCurrentUser(null); // Force clear even if API fails
+        setCurrentUser(null);
     }
   };
 
@@ -217,14 +223,22 @@ const App: React.FC = () => {
         <div className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
             <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md text-center border border-red-100">
                 <AlertTriangle className="text-red-500 mx-auto mb-4" size={48} />
-                <h1 className="text-xl font-bold text-slate-800 mb-2">Something went wrong</h1>
+                <h1 className="text-xl font-bold text-slate-800 mb-2">Application Error</h1>
                 <p className="text-slate-600 mb-6 text-sm">{appError}</p>
-                <button 
-                    onClick={() => window.location.reload()}
-                    className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-indigo-700 transition-colors"
-                >
-                    Try Again
-                </button>
+                <div className="space-y-3">
+                    <button 
+                        onClick={() => window.location.reload()}
+                        className="w-full bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold shadow-md hover:bg-indigo-700 transition-colors"
+                    >
+                        Reload Page
+                    </button>
+                    <button 
+                        onClick={() => { localStorage.clear(); window.location.reload(); }}
+                        className="w-full bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold hover:bg-slate-300 transition-colors"
+                    >
+                        Clear Cache & Reset
+                    </button>
+                </div>
             </div>
         </div>
     );
