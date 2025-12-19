@@ -1,10 +1,18 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { AttendanceRecord, AttendanceType } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const generateWorkSummary = async (records: AttendanceRecord[]): Promise<string> => {
   try {
+    // Check if API_KEY exists to prevent crash
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      console.warn("Gemini API Key is missing. Please set API_KEY in environment variables.");
+      return "AI Summary is unavailable: Missing API Key configuration.";
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+
     // Filter for only today or recent records to keep prompt small
     const relevantRecords = records.slice(0, 20).map(r => ({
       type: r.type,

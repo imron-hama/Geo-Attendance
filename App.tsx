@@ -23,10 +23,27 @@ const App: React.FC = () => {
   const [loadingRecords, setLoadingRecords] = useState<boolean>(false);
   const [wpConfig, setWpConfig] = useState<WorkplaceConfig | null>(null);
   const [currentNote, setCurrentNote] = useState<string>('');
+  const [appError, setAppError] = useState<string | null>(null);
   
   const [showAdminSettings, setShowAdminSettings] = useState(false);
   const [adminViewAll, setAdminViewAll] = useState<boolean>(false);
   const [distance, setDistance] = useState<number | null>(null);
+
+  // Error catching for initialization
+  useEffect(() => {
+    const initApp = async () => {
+        try {
+            const user = await api.getCurrentUser();
+            if (user) {
+                setCurrentUser(user);
+            }
+        } catch (e: any) {
+            console.error("Initialization Error:", e);
+            // Don't set error for guest users
+        }
+    };
+    initApp();
+  }, []);
 
   useEffect(() => {
     if (currentUser) {
@@ -59,11 +76,11 @@ const App: React.FC = () => {
     if (!currentUser) return;
     setLoadingRecords(true);
     try {
-      // Security: api.getHistory now takes userId and role to filter at source
       const data = await api.getHistory(currentUser.id, currentUser.role);
       setRecords(data);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to load records", e);
+      setAppError("Failed to fetch history from database.");
     } finally {
       setLoadingRecords(false);
     }
@@ -147,8 +164,13 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    await api.logout();
-    setCurrentUser(null);
+    try {
+        await api.logout();
+        setCurrentUser(null);
+    } catch (e) {
+        console.error("Logout error", e);
+        setCurrentUser(null); // Force clear even if API fails
+    }
   };
 
   const handleGenerateSummary = async () => {
@@ -159,12 +181,11 @@ const App: React.FC = () => {
     setGeneratingSummary(false);
   };
 
-  // Memoized records filtering
   const displayRecords = useMemo(() => {
-    return records.filter(record => adminViewAll ? true : record.userId === currentUser?.id);
+    if (!currentUser) return [];
+    return records.filter(record => adminViewAll ? true : record.userId === currentUser.id);
   }, [records, adminViewAll, currentUser?.id]);
 
-  // Group records by date for better visualization
   const groupedRecords = useMemo(() => {
     const groups: { [key: string]: AttendanceRecord[] } = {};
     displayRecords.forEach(record => {
@@ -184,11 +205,30 @@ const App: React.FC = () => {
   }, [displayRecords]);
 
   const userRecords = useMemo(() => {
-    return records.filter(r => r.userId === currentUser?.id);
+    if (!currentUser) return [];
+    return records.filter(r => r.userId === currentUser.id);
   }, [records, currentUser?.id]);
 
   const isCheckedIn = userRecords.length > 0 && userRecords[0].type === AttendanceType.CHECK_IN;
   const isInRange = distance !== null && wpConfig && distance <= wpConfig.radiusMeters;
+
+  if (appError) {
+    return (
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
+            <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md text-center border border-red-100">
+                <AlertTriangle className="text-red-500 mx-auto mb-4" size={48} />
+                <h1 className="text-xl font-bold text-slate-800 mb-2">Something went wrong</h1>
+                <p className="text-slate-600 mb-6 text-sm">{appError}</p>
+                <button 
+                    onClick={() => window.location.reload()}
+                    className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-indigo-700 transition-colors"
+                >
+                    Try Again
+                </button>
+            </div>
+        </div>
+    );
+  }
 
   if (!currentUser) return <Login onLogin={setCurrentUser} />;
   if (showAdminSettings) return <AdminSettings onClose={() => { setShowAdminSettings(false); loadWorkplaceConfig(); }} />;
