@@ -1,0 +1,7 @@
+{
+  "name": "GeoAttend AI",
+  "description": "A modern Time Attendance system featuring GPS location tracking, local history persistence, and AI-powered work summaries.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
